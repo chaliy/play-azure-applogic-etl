@@ -1,0 +1,61 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "name": {
+            "defaultValue": "play-azure-applogic-etl",
+            "type": "String"
+        },
+        "workflow_name": {
+            "defaultValue": "file-etl",
+            "type": "String"
+        }
+    },
+    "variables": {},
+    "resources": [{
+            "type": "Microsoft.Web/serverfarms",
+            "name": "[parameters('name')]",
+            "apiVersion": "2015-08-01",
+            "sku": {
+                "name": "S1",
+                "tier": "Standard",
+                "size": "S1",
+                "family": "S",
+                "capacity": 1
+            },
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "name": "[parameters('name')]",
+                "numberOfWorkers": 1
+            },
+            "dependsOn": []
+        },
+        {
+            "type": "Microsoft.Logic/workflows",
+            "name": "[parameters('workflow_name')]",
+            "apiVersion": "2015-02-01-preview",
+            "location": "[resourceGroup().location]",
+            "properties": {
+                "state": "Enabled",
+                "sku": {
+                    "name": "Standard",
+                    "plan": {
+                        "id": "[resourceId('Microsoft.Web/serverfarms', parameters('name'))]"
+                    }
+                },
+                "definition": {
+                    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-04-01-preview/workflowdefinition.json#",
+                    "contentVersion": "1.0.0.0",
+                    "parameters": {},
+                    "triggers": {},
+                    "actions": {},
+                    "outputs": {}
+                },
+                "parameters": {}
+            },
+            "dependsOn": [
+                "[resourceId('Microsoft.Web/serverfarms', parameters('name'))]"
+            ]
+        }
+    ]
+}
