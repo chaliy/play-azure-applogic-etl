@@ -1,0 +1,69 @@
+<?xml version="1.0"?>
+<Records>
+  <Repair>
+    <SerialNumber>178618953</SerialNumber>
+    <ArticleNumber>112329873</ArticleNumber>
+    <Country>
+      <CodeCountry>CO</CodeCountry>
+    </Country>
+    <CustomerNumber>263396433</CustomerNumber>
+    <RepairOrderNumber>RO4204552</RepairOrderNumber>
+    <RepairDate>
+      <DateYYYY>2014</DateYYYY>
+      <DateMM>3</DateMM>
+      <DateDD>18</DateDD>
+    </RepairDate>
+    <Status>Success</Status>
+  </Repair>
+</Records>
+<Records>
+  <Repair>
+    <SerialNumber>674800730</SerialNumber>
+    <ArticleNumber>367104396</ArticleNumber>
+    <Country>
+      <CodeCountry>CO</CodeCountry>
+    </Country>
+    <CustomerNumber>634961114</CustomerNumber>
+    <RepairOrderNumber>RO6402720</RepairOrderNumber>
+    <RepairDate>
+      <DateYYYY>2014</DateYYYY>
+      <DateMM>5</DateMM>
+      <DateDD>1</DateDD>
+    </RepairDate>
+    <Status>Success</Status>
+  </Repair>
+</Records>
+<Records>
+  <Repair>
+    <SerialNumber>742147435</SerialNumber>
+    <ArticleNumber>351341367</ArticleNumber>
+    <Country>
+      <CodeCountry>UM</CodeCountry>
+    </Country>
+    <CustomerNumber>418957658</CustomerNumber>
+    <RepairOrderNumber>RO0573094</RepairOrderNumber>
+    <RepairDate>
+      <DateYYYY>2013</DateYYYY>
+      <DateMM>6</DateMM>
+      <DateDD>23</DateDD>
+    </RepairDate>
+    <Status>Success</Status>
+  </Repair>
+</Records>
+<Records>
+  <Repair>
+    <SerialNumber>098379381</SerialNumber>
+    <ArticleNumber>319046158</ArticleNumber>
+    <Country>
+      <CodeCountry>CZ</CodeCountry>
+    </Country>
+    <CustomerNumber>285842139</CustomerNumber>
+    <RepairOrderNumber>RO2524021</RepairOrderNumber>
+    <RepairDate>
+      <DateYYYY>2015</DateYYYY>
+      <DateMM>9</DateMM>
+      <DateDD>22</DateDD>
+    </RepairDate>
+    <Status>Success</Status>
+  </Repair>
+</Records>

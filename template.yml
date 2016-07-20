@@ -1,0 +1,202 @@
+$schema: https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#
+contentVersion: 1.0.0.0
+parameters: {}
+
+variables:
+  service_plan_name: "file-etl-farm"
+  service_plan_id: "[resourceId('Microsoft.Web/serverfarms', variables('service_plan_name'))]"
+  storage_account_name: "playfileetl"
+  storage_account_id: "[resourceId('Microsoft.Storage/storageAccounts', variables('storage_account_name'))]"
+  workflow_name: "file-etl"
+  storage_connection_name: "file-etl-storage-connection"
+  storage_connection_id: "[resourceId('Microsoft.Web/connections', variables('storage_connection_name'))]"
+  func_app_name: "playfileetl-functions"
+  func_app_id: "[resourceId('Microsoft.Web/sites', variables('func_app_name'))]"
+
+  storage_api_version: "[providers('Microsoft.Storage', 'storageAccounts').apiVersions[0]]"
+
+resources:
+  -
+    type: "Microsoft.Web/serverfarms"
+    name: "[variables('service_plan_name')]"
+    sku:
+      name: "S1"
+      tier: "Standard"
+      size: "S1"
+      family: "S"
+      capacity: 1
+    properties:
+      name: "[variables('service_plan_name')]"
+      numberOfWorkers: 1
+    apiVersion: "2015-08-01"
+    location: "[resourceGroup().location]"
+    dependsOn: []
+
+  -
+    type: "Microsoft.Storage/storageAccounts"
+    name: "[variables('storage_account_name')]"
+    sku:
+      name: "Standard_RAGRS"
+      tier: "Standard"
+    kind: "Storage"
+    tags: {}
+    properties: {}
+    apiVersion: "2016-01-01"
+    location: "[resourceGroup().location]"
+    dependsOn: []
+
+  -
+    {
+      "type": "Microsoft.Web/sites",
+      "kind": "functionapp",
+      "name": "[variables('func_app_name')]",
+      "properties": {
+        "name": "[variables('func_app_name')]",
+        "serverFarmId": "[variables('service_plan_id')]"
+      },
+      "resources": [{
+          "type": "config",
+          "name": "appsettings",
+          "properties": {
+            "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING" : "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_account_name'),';AccountKey=',listKeys(variables('storage_account_id'), variables('storage_api_version')).keys[0].value,';')]",
+            "WEBSITE_CONTENTSHARE" : "[variables('func_app_name')]",
+            "AzureWebJobsDashboard": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_account_name'),';AccountKey=',listKeys(variables('storage_account_id'), variables('storage_api_version')).keys[0].value,';')]",
+            "AzureWebJobsStorage": "[concat('DefaultEndpointsProtocol=https;AccountName=',variables('storage_account_name'),';AccountKey=',listKeys(variables('storage_account_id'), variables('storage_api_version')).keys[0].value,';')]",
+            "FUNCTIONS_EXTENSION_VERSION": "latest"
+          },
+          "apiVersion": "2016-03-01",
+          "dependsOn": [
+            "[variables('func_app_id')]",
+            "[variables('storage_account_id')]"
+          ]
+        }
+      ],
+      "apiVersion": "2015-08-01",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[variables('service_plan_id')]",
+        "[variables('storage_account_id')]"
+      ],
+    }
+
+  -
+    type: "Microsoft.Web/sites/functions"
+    name: "[concat(variables('func_app_name'),'/', 'test')]"
+
+    properties:
+        config:
+            bindings:
+              -
+                name: req
+                webHookType: genericJson
+                direction: in
+                type: httpTrigger
+                authLevel: anonymous
+              -
+                "name": res
+                "direction": out
+                "type": http
+        files:
+            run.csx: |
+              using System.Net;
+
+              public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, TraceWriter log)
+              {
+                  var content = await req.Content.ReadAsStringAsync();
+                  log.Info($"Trigger function processed: {content}");
+                  return req.CreateResponse(HttpStatusCode.OK, content);
+              }
+
+    apiVersion: "2015-08-01"
+
+  -
+    type: "Microsoft.Web/connections"
+    apiVersion: "2015-08-01-preview"
+    location: "[resourceGroup().location]"
+    name: "[variables('storage_connection_name')]"
+    properties:
+      api:
+        id: "[concat('subscriptions/', subscription().subscriptionId, '/providers/Microsoft.Web/locations/', resourceGroup().location, '/managedApis/azureblob')]"
+      displayName: "[variables('storage_connection_name')]"
+      parameterValues:
+        accountName: "[variables('storage_account_name')]"
+        accessKey: "[listKeys(variables('storage_account_id'), variables('storage_api_version')).keys[0].value]"
+    dependsOn:
+      - "[variables('storage_account_id')]"
+
+  -
+    type: "Microsoft.Logic/workflows"
+    name: "[variables('workflow_name')]"
+    properties:
+      state: "Enabled"
+      sku:
+        name: "Standard"
+        plan:
+          id: "[variables('service_plan_id')]"
+      definition:
+        $schema: "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-04-01-preview/workflowdefinition.json#"
+        contentVersion: "1.0.0.0"
+        parameters:
+          $connections:
+            defaultValue: {}
+            type: "Object"
+        triggers:
+          recurrence:
+            type: "recurrence"
+            recurrence:
+              frequency: "Hour"
+              interval: 1
+        actions:
+
+          Http:
+            runAfter: {}
+            type: "Http"
+            inputs:
+              method: "GET"
+              uri: "https://raw.githubusercontent.com/psget/psget/master/Directory.xml"
+
+          Foreach:
+            runAfter:
+                Http:
+                  - Succeeded
+            type: Foreach
+            foreach: "@xpath(xml(body('Http')), '//*[local-name() = \"entry\"]')"
+            actions:
+                Test:
+                    runAfter: {}
+                    type: Function
+                    inputs:
+                        body: "@json(item())"
+                        function:
+                            id: "[resourceId('Microsoft.Web/sites/functions', variables('func_app_name'), 'test')]"
+
+          Upload_result:
+            runAfter:
+              Foreach:
+                - Succeeded
+            type: ApiConnection
+            inputs:
+              body: "@{body('Http')}"
+              host:
+                api:
+                  runtimeUrl: "[concat('https://logic-apis-', resourceGroup().location, '.azure-apim.net/apim/azureblob')]"
+                connection:
+                  name: "@parameters('$connections')['storage']['connectionId']"
+              method: "post"
+              path: "/datasets/default/files"
+              queries:
+                folderPath: "/output"
+                name: "result.xml"
+        outputs: {}
+      parameters:
+        $connections:
+          value:
+            storage:
+              connectionId: "[variables('storage_connection_id')]"
+              connectionName: "[variables('storage_connection_name')]"
+              id: "[reference(concat('Microsoft.Web/connections/', variables('storage_connection_name')), '2015-08-01-preview').api.id]"
+    apiVersion: "2015-02-01-preview"
+    location: "[resourceGroup().location]"
+    dependsOn:
+      - "[variables('service_plan_id')]"
+      - "[variables('storage_connection_id')]"
