@@ -1,8 +1,15 @@
-# Dependencies
+# Deploy
+
+To run deployment this stuff should be installed
+
+- make # choco install make
+- azure # Azure CLI
+- yaml2js # npm install yamlxjson -g
+
+Then change your
 
 ```
-azure cli
-yaml2js # npm install yamlxjson
+make apply RESOURCE_GROUP=super-mega-resource-group
 ```
 
 # TODO
